@@ -1,0 +1,38 @@
+# 编译生成的文件
+/build/
+*.o
+*.obj
+*.exe
+*.out
+*.a
+*.so
+*.dll
+
+# VSCode 配置文件（可选）
+.vscode/
+
+# C/C++ 相关
+*.d
+*.gcda
+*.gcno
+*.gcov
+
+# Python 相关
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+.py
+
+# 数据库文件
+/data/*.db
+
+# 其他临时文件
+*.log
+*.tmp
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+.env
