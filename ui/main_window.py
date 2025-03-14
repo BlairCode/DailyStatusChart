@@ -17,7 +17,7 @@ from .base_window import BaseWindow, animate_button
 # 定义主窗口类
 class MainWindow(BaseWindow):
     def __init__(self):
-        super().__init__(title="Daily Status Chart v0.0.2")  # 设置窗口标题
+        super().__init__(title="Daily Status Chart v1.0.2")  # 设置窗口标题
         init_database()
         self.setup_ui()  # 设置内容区域
         animate_open(self)  # 启动淡入动画
@@ -61,7 +61,6 @@ class MainWindow(BaseWindow):
             self.content_layout.addWidget(btn)  # 添加到基类的 content_layout
 
     def input_status(self):
-        # 修改：移除 self 作为 parent，使弹窗独立
         dialog = StatusDialog(parent=None)
         dialog.exec()
 

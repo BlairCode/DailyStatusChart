@@ -20,6 +20,7 @@ class RankingDialog(BaseDialog):
         animate_open(self)
 
     def init_ui(self):
+        print("打开排行榜")
         # 首先调用基类的 init_ui，确保 content_widget 和 main_layout 初始化
         super().init_ui()
 

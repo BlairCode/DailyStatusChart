@@ -30,6 +30,7 @@ class StatusDialog(BaseDialog):
         animate_open(self)
 
     def setup_ui(self):
+        print("输入模式")
         self.main_layout = QVBoxLayout()
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.setSpacing(0)
@@ -125,6 +126,7 @@ class StatusDialog(BaseDialog):
 
         today = get_today()
         attr_idx = self.current_page
+        print(f"新一页:{attr_idx}")
         attr = ATTR_NAMES[attr_idx]
 
         title_label = QLabel(attr, self)
@@ -239,15 +241,18 @@ class StatusDialog(BaseDialog):
         self.next_btn.clicked.connect(self.save_status if self.current_page == len(ATTR_NAMES) - 1 else self.next_page)
 
     def clear_default(self, entry):
+        print("文本框输入中...")
         if entry.text() == "3":
             entry.clear()
 
     def prev_page(self):
+        print("退回上一页")
         if self.current_page > 0:
             self.current_page -= 1
             self.update_page()
 
     def next_page(self):
+        print("跳转下一页")
         self.save_current_page()
         if self.current_page < len(ATTR_NAMES) - 1:
             self.current_page += 1
@@ -287,5 +292,6 @@ class StatusDialog(BaseDialog):
                 cursor.execute("INSERT OR REPLACE INTO daily_status (date, score, title) VALUES (?, ?, ?)", (today, total_score, title))
                 conn.commit()
             self.accept()
+            print("Save Successfully!")
         except sqlite3.Error as e:
             QMessageBox.critical(self, "Database Error", f"Failed to save: {e}")

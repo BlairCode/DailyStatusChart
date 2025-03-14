@@ -28,6 +28,7 @@ def main():
         window = MainWindow()
         window.show()
 
+        print("APP 启动！")
         sys.exit(app.exec())  # app.exec() 启动 Qt 的 事件循环（Event Loop）
     
     except Exception as e:
