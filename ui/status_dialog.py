@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import (
     QGridLayout, QLabel, QLineEdit, QTextEdit,
     QHBoxLayout, QMessageBox, QScrollArea, QWidget
 )
-from PyQt6.QtGui import QTextOption
+from PyQt6.QtGui import QTextOption, QGuiApplication
 from PyQt6.QtCore import Qt
 from utils.database import DB_PATH, get_today
 from utils.constants import (
@@ -11,41 +11,44 @@ from utils.constants import (
     FACTOR_WEIGHTS, ATTR_DESCS, SCORES_TIP, TIP
 )
 from utils.title_generator import generate_title
-from utils.helpers import apply_gradient_background, animate_open
+from utils.helpers import animate_open
 import sqlite3
+from .base_dialog import BaseDialog
+from PyQt6.QtWidgets import QApplication  # 新增：导入 QApplication
 
-class StatusDialog(QDialog):
+class StatusDialog(BaseDialog):
     def __init__(self, parent=None, is_change=False):
-        super().__init__(parent)
         self.is_change = is_change
-        self.setWindowTitle("Flip My Status" if is_change else "Record My Day")
-        self.setFixedSize(600, 600)  # 保持宽度
-        self.setWindowOpacity(0)
+        super().__init__(parent, title="Flip My Status" if is_change else "Record My Day")
+        self.setMinimumSize(600, 600)
         self.current_page = 0
         self.entries = [[] for _ in ATTR_NAMES]
         self.event_entries = [None] * len(ATTR_NAMES)
         self.attr_scores = [0.0] * len(ATTR_NAMES)
-        self.init_ui()
-        animate_open(self)  
+        self.setup_ui()
+        self.center_on_screen()  # 居中显示
+        animate_open(self)
 
-    def init_ui(self):
-        self.main_layout = QVBoxLayout()  # 垂直布局
-        self.content_widget = QWidget()
-        self.content_layout = QGridLayout(self.content_widget)  # 网格布局
+    def setup_ui(self):
+        self.main_layout = QVBoxLayout()
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
+        self.main_layout.setSpacing(0)
+
+        self.content_widget_inner = QWidget()
+        self.content_layout = QGridLayout(self.content_widget_inner)
         self.content_layout.setSpacing(12)
 
-        # 设置列的拉伸因子，第二列（输入框列）变窄
-        self.content_layout.setColumnStretch(0, 2)  # 因素列占 2 份
-        self.content_layout.setColumnStretch(1, 1)  # 输入框列占 1 份（变窄）
-        self.content_layout.setColumnStretch(2, 2)  # 提示列占 2 份
+        self.content_layout.setColumnStretch(0, 2)
+        self.content_layout.setColumnStretch(1, 1)
+        self.content_layout.setColumnStretch(2, 2)
 
-        scroll = QScrollArea()  # 滚动区域
-        scroll.setWidgetResizable(True)  # 自适应范围
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
         scroll.setStyleSheet("background: transparent; border: none;")
-        scroll.setWidget(self.content_widget)
+        scroll.setWidget(self.content_widget_inner)
         self.main_layout.addWidget(scroll)
 
-        btn_layout = QHBoxLayout()  # 水平布局
+        btn_layout = QHBoxLayout()
         self.prev_btn = QPushButton("Previous", self)
         self.prev_btn.setStyleSheet("""
             QPushButton {
@@ -101,27 +104,29 @@ class StatusDialog(QDialog):
         btn_layout.addWidget(self.next_btn)
 
         self.main_layout.addLayout(btn_layout)
-
-        self.setStyleSheet("""
-            QDialog {
-                background: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:1, 
-                                            stop:0 #FFF3E4, stop:1 #FCE4EC);
-            }
-        """)
+        self.content_widget.setLayout(self.main_layout)
         self.content_widget.setStyleSheet("background: transparent;")
-        self.setLayout(self.main_layout)
         self.update_page()
 
+    def center_on_screen(self):
+        # 使用 QApplication.primaryScreen() 替代 QDesktopWidget
+        screen = QApplication.primaryScreen().geometry()
+        size = self.geometry()
+        # 计算居中位置
+        x = (screen.width() - size.width()) // 2
+        y = (screen.height() - size.height()) // 2
+        self.move(x, y)
+
     def update_page(self):
-        # 清空当前网格中的所有控件
         for i in reversed(range(self.content_layout.count())):
-            self.content_layout.itemAt(i).widget().setParent(None)
+            item = self.content_layout.itemAt(i)
+            if item and item.widget():
+                item.widget().setParent(None)
 
         today = get_today()
         attr_idx = self.current_page
         attr = ATTR_NAMES[attr_idx]
 
-        # 标题：属性
         title_label = QLabel(attr, self)
         title_label.setStyleSheet("""
             color: #FFFFFF;
@@ -133,7 +138,6 @@ class StatusDialog(QDialog):
         """)
         self.content_layout.addWidget(title_label, 0, 0, 1, 3, alignment=Qt.AlignmentFlag.AlignCenter)
 
-        # 属性描述
         desc_label = QLabel(ATTR_DESCS[attr_idx], self)
         desc_label.setWordWrap(True)
         desc_label.setStyleSheet("""
@@ -144,10 +148,8 @@ class StatusDialog(QDialog):
         self.content_layout.addWidget(desc_label, 1, 0, 1, 3)
 
         self.entries[attr_idx].clear()
-        # 数据库连接
         with sqlite3.connect(DB_PATH) as conn:
             cursor = conn.cursor()
-            # 遍历属性的所有因素
             for j, factor in enumerate(FACTOR_NAMES[attr_idx]):
                 factor_label = QLabel(factor, self)
                 factor_label.setWordWrap(True)
@@ -158,9 +160,8 @@ class StatusDialog(QDialog):
                 """)
                 self.content_layout.addWidget(factor_label, j + 2, 0)
 
-                # 输入框
                 entry = QLineEdit(self)
-                entry.setMinimumWidth(40)  # 最小宽度保证可见
+                entry.setMinimumWidth(40)
                 entry.setStyleSheet("""
                     background: #FFFFFF; 
                     color: #5C4033; 
@@ -181,7 +182,6 @@ class StatusDialog(QDialog):
                 self.content_layout.addWidget(entry, j + 2, 1)
                 self.entries[attr_idx].append(entry)
 
-            # 添加评分提示（竖向排布，移到第 2 列避免覆盖输入框）
             hint_widget = QWidget()
             hint_layout = QVBoxLayout(hint_widget)
             hint_layout.setAlignment(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignRight)
@@ -204,7 +204,6 @@ class StatusDialog(QDialog):
                 """)
                 hint_layout.addWidget(score_label)
 
-            # 调整为第 2 列，从第 2 行到第 5 行，跨 4 行
             self.content_layout.addWidget(hint_widget, 2, 2, 4, 1)
 
             event_label = QLabel(RECORD_EVENT, self)
@@ -231,7 +230,6 @@ class StatusDialog(QDialog):
                 event = cursor.fetchone()
                 event_entry.setText(event[0] if event else "")
             
-            # 事件输入框占第 1 列和第 2 列
             self.content_layout.addWidget(event_entry, 6, 1, 1, 2)
             self.event_entries[attr_idx] = event_entry
 
@@ -255,7 +253,6 @@ class StatusDialog(QDialog):
             self.current_page += 1
             self.update_page()
 
-    # 保存当页数据
     def save_current_page(self):
         today = get_today()
         attr_idx = self.current_page
@@ -263,16 +260,13 @@ class StatusDialog(QDialog):
         try:
             with sqlite3.connect(DB_PATH) as conn:
                 cursor = conn.cursor()
-                # 输入框文本转float
                 f_scores = [float(entry.text()) for entry in self.entries[attr_idx]]
                 if not all(1 <= s <= 5 for s in f_scores):
                     raise ValueError(f"Factor scores for {attr} must be between 1 and 5!")
-                # 计算属性分数
                 attr_score = sum(f * w for f, w in zip(f_scores, FACTOR_WEIGHTS))
                 self.attr_scores[attr_idx] = attr_score
 
                 cursor.execute("INSERT OR REPLACE INTO attributes (date, attr_name, attr_score, total_score) VALUES (?, ?, ?, ?)", (today, attr, attr_score, attr_score))
-                # 遍历保存因素
                 for j, factor in enumerate(FACTOR_NAMES[attr_idx]):
                     cursor.execute("INSERT OR REPLACE INTO factors (date, attr_name, factor_name, factor_score, factor_weight) VALUES (?, ?, ?, ?, ?)", (today, attr, factor, f_scores[j], FACTOR_WEIGHTS[j]))
                 event_text = self.event_entries[attr_idx].toPlainText().strip()

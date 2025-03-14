@@ -2,24 +2,31 @@ from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QTableWidget, QTableWidgetItem, QHeaderView
 )
 from PyQt6.QtCore import Qt, QPropertyAnimation, QEasingCurve
-from PyQt6.QtGui import QFont, QColor
+from PyQt6.QtGui import QFont, QColor, QGuiApplication
 from utils.database import DB_PATH
 from utils.constants import ICON_DIR
 from utils.helpers import apply_gradient_background, animate_open
 import sqlite3
 import os
+from .base_dialog import BaseDialog  # 导入 BaseDialog
 
-class RankingDialog(QDialog):
+class RankingDialog(BaseDialog):
     def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Ranking")
-        self.setFixedSize(700, 500)
+        super().__init__(parent, title="Ranking")  # 调用基类构造函数，设置标题
+        self.setMinimumSize(700, 500)  # 替换 setFixedSize，支持全屏
         self.setWindowOpacity(0)
         self.init_ui()
+        self.center_on_screen()  # 居中显示
         animate_open(self)
 
     def init_ui(self):
-        layout = QVBoxLayout()
+        # 首先调用基类的 init_ui，确保 content_widget 和 main_layout 初始化
+        super().init_ui()
+
+        # 显式初始化 content_layout
+        self.content_layout = QVBoxLayout(self.content_widget)
+        self.content_layout.setContentsMargins(10, 10, 10, 10)  # 调整边距以适配标题栏
+
         table = QTableWidget(self)
         table.setColumnCount(4)
         table.setHorizontalHeaderLabels(["Rank", "Date", "Score", "Title"])
@@ -63,14 +70,6 @@ class RankingDialog(QDialog):
         table.setObjectName("rankingTable")  # 为表格设置唯一标识符以应用动画
         table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
 
-        # 背景样式（与 HistoryDialog 一致）
-        self.setStyleSheet("""
-            QDialog {
-                background: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:1,
-                                            stop:0 #FFF8E1, stop:1 #FCE4EC);
-            }
-        """)
-
         # 从数据库加载排行榜数据
         with sqlite3.connect(DB_PATH) as conn:
             cursor = conn.cursor()
@@ -110,6 +109,13 @@ class RankingDialog(QDialog):
                 title_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
                 table.setItem(i, 3, title_item)
 
-        layout.addWidget(table)
-        self.setLayout(layout)
-        apply_gradient_background(self)
+        self.content_layout.addWidget(table)
+        # 移除 apply_gradient_background，因为 BaseDialog 已处理背景样式
+
+    def center_on_screen(self):
+        # 使用 PyQt6 的 QGuiApplication.primaryScreen() 居中显示
+        screen = QGuiApplication.primaryScreen().geometry()
+        size = self.geometry()
+        x = (screen.width() - size.width()) // 2
+        y = (screen.height() - size.height()) // 2
+        self.move(x, y)

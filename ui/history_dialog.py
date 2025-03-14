@@ -1,22 +1,32 @@
-from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel, QScrollArea, QWidget, QGraphicsOpacityEffect
+# 文件：E:\Coding\DailyStatusChart\src\python\ui\history_dialog.py
+from PyQt6.QtWidgets import (
+    QDialog, QVBoxLayout, QLabel, QScrollArea, QWidget, QGraphicsOpacityEffect
+)
 from PyQt6.QtCore import Qt, QPropertyAnimation, QEasingCurve
-from PyQt6.QtGui import QFont, QColor
+from PyQt6.QtGui import QFont, QColor, QGuiApplication
 from utils.database import DB_PATH
 from utils.helpers import apply_gradient_background, animate_open
 import sqlite3
+from .base_dialog import BaseDialog  # 继承 BaseDialog
 
-class HistoryDialog(QDialog):
+class HistoryDialog(BaseDialog):
     def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("My Diary History")
-        self.setFixedSize(700, 500)
+        # 调用 BaseDialog 的构造函数，传递标题
+        super().__init__(parent, title="My Diary History")
+        self.setMinimumSize(700, 500)  # 替换 setFixedSize，支持全屏
         self.setWindowOpacity(0)
         self.init_ui()
+        self.center_on_screen()  # 居中显示
         animate_open(self)
 
     def init_ui(self):
-        # 主布局
-        layout = QVBoxLayout()
+        # 首先调用基类的 init_ui，确保 content_widget 和 main_layout 初始化
+        super().init_ui()
+        
+        # 显式初始化 content_layout
+        self.content_layout = QVBoxLayout(self.content_widget)
+        self.content_layout.setContentsMargins(10, 10, 10, 10)  # 调整边距以适配标题栏
+
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setStyleSheet("""
@@ -47,12 +57,13 @@ class HistoryDialog(QDialog):
         content_layout.setContentsMargins(20, 20, 20, 20)
 
         # 背景样式（日记风格，柔和粉色调）
-        self.setStyleSheet("""
-            QDialog {
-                background: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:1,
-                                            stop:0 #FFF8E1, stop:1 #FCE4EC);
-            }
-        """)
+        # BaseDialog 已设置背景样式，这里注释掉以避免冲突
+        # self.setStyleSheet("""
+        #     QDialog {
+        #         background: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:1,
+        #                                     stop:0 #FFF8E1, stop:1 #FCE4EC);
+        #     }
+        # """)
         content.setStyleSheet("""
             QWidget {
                 background: rgba(255, 255, 255, 0.95);
@@ -142,8 +153,7 @@ class HistoryDialog(QDialog):
                     content_layout.addWidget(day_widget)
 
         scroll.setWidget(content)
-        layout.addWidget(scroll)
-        self.setLayout(layout)
+        self.content_layout.addWidget(scroll)
 
     def add_glow_animation(self, label):
         """为称号标签添加透明度动画效果"""
@@ -201,3 +211,11 @@ class HistoryDialog(QDialog):
             color_animation.setKeyValueAt(0.5, glow_style)
             color_animation.setKeyValueAt(1, base_style)
             color_animation.start()
+
+    def center_on_screen(self):
+        # 使用 PyQt6 的 QGuiApplication.primaryScreen() 居中显示
+        screen = QGuiApplication.primaryScreen().geometry()
+        size = self.geometry()
+        x = (screen.width() - size.width()) // 2
+        y = (screen.height() - size.height()) // 2
+        self.move(x, y)
